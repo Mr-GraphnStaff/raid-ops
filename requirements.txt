@@ -1,1 +1,2 @@
 raidtoolkit
+websocket-client
