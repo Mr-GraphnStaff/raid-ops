@@ -1,15 +1,18 @@
 import asyncio
-from raidtoolkit import RaidToolkitClient
+
+from raid_ops.connectors.rtk_client import RaidToolkitAccountsGateway
+from raid_ops.services.account_service import AccountService
 
 
-async def main():
-    client = RaidToolkitClient()
-    client.connect()
+async def main() -> None:
+    gateway = RaidToolkitAccountsGateway()
+    gateway.connect()
 
-    accounts = await client.AccountApi.get_accounts()
-    print("Accounts found:", accounts)
+    service = AccountService(gateway)
+    accounts = await service.list_account_summaries()
+    print("Accounts found:", service.as_raw_list(accounts))
 
-    client.close()
+    gateway.close()
 
 
 if __name__ == "__main__":
