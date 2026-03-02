@@ -1,2 +1,7 @@
 raidtoolkit
 websocket-client
+anthropic
+pygetwindow
+Pillow
+pyautogui
+pynput
