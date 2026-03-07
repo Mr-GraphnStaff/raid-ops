@@ -12,28 +12,40 @@ from raid_ops.connectors.routine_recorder import JsonlRecorderGateway, RoutineRe
 from raid_ops.connectors.vision_observer import Screen, make_default_observer
 from raid_ops.services.agent_service import AgentService
 from raid_ops.services.routine_service import JsonlRoutineRepository, RoutineService
+from raid_ops.services.runtime_mode import (
+    AutomationDisabledError,
+    RuntimeConfig,
+    RuntimeMode,
+    require_automation_enabled,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="raid-ops automation CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
+    mode_choices = [mode.value for mode in RuntimeMode]
 
     record = subparsers.add_parser("record", help="Record state/action pairs")
     record.add_argument("--hotkeys", nargs="*", default=None)
+    record.add_argument("--mode", choices=mode_choices, default=RuntimeMode.READ_ONLY.value)
 
     playback = subparsers.add_parser("playback", help="Play back a routine by screen")
     playback.add_argument("screen")
+    playback.add_argument("--mode", choices=mode_choices, default=RuntimeMode.READ_ONLY.value)
 
     run = subparsers.add_parser("run", help="Run the agent loop")
     run.add_argument("--max-iterations", type=int, default=1)
+    run.add_argument("--mode", choices=mode_choices, default=RuntimeMode.READ_ONLY.value)
 
-    subparsers.add_parser("list-routines", help="List available routines")
+    list_routines = subparsers.add_parser("list-routines", help="List available routines")
+    list_routines.add_argument("--mode", choices=mode_choices, default=RuntimeMode.READ_ONLY.value)
     return parser
 
 
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
+    runtime = RuntimeConfig(mode=RuntimeMode(args.mode))
 
     repository = JsonlRoutineRepository(Path("data/recordings"))
     routines = RoutineService(repository)
@@ -43,6 +55,10 @@ def main() -> None:
         return
 
     if args.command == "record":
+        try:
+            require_automation_enabled(runtime, "record")
+        except AutomationDisabledError as error:
+            raise SystemExit(str(error))
         observer = make_default_observer()
         recorder = RoutineRecorder(JsonlRecorderGateway())
         keyboard_hook = KeyboardHook(recorder, hotkeys=set(args.hotkeys) if args.hotkeys else None)
@@ -60,6 +76,10 @@ def main() -> None:
         return
 
     if args.command == "run":
+        try:
+            require_automation_enabled(runtime, "run")
+        except AutomationDisabledError as error:
+            raise SystemExit(str(error))
         observer = make_default_observer()
         try:
             observer.start()
@@ -77,6 +97,10 @@ def main() -> None:
         return
 
     if args.command == "playback":
+        try:
+            require_automation_enabled(runtime, "playback")
+        except AutomationDisabledError as error:
+            raise SystemExit(str(error))
         observer = make_default_observer()
         try:
             observer.start()

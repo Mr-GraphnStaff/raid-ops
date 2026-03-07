@@ -28,10 +28,11 @@ def test_list_account_summaries_maps_payload() -> None:
     service = AccountService(gateway)
 
     accounts = asyncio.run(service.list_account_summaries())
+    records = asyncio.run(service.list_account_records())
 
     assert [a.id for a in accounts] == ["1", "2"]
     assert [a.name for a in accounts] == ["Main", "Alt"]
-    assert accounts[0].raw["level"] == 100
+    assert records[0].raw["level"] == 100
 
 
 def test_list_account_summaries_defaults_missing_fields() -> None:

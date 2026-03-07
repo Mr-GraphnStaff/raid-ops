@@ -6,6 +6,7 @@ from typing import Any
 from raid_ops.connectors.rtk_client import RaidToolkitAccountsGateway
 from raid_ops.services.account_service import AccountService
 from raid_ops.services.query_service import RaidToolkitQueryService
+from raid_ops.services.runtime_mode import RuntimeConfig, RuntimeMode
 
 
 def _parse_args() -> Namespace:
@@ -19,6 +20,17 @@ def _parse_args() -> Namespace:
     )
     parser.add_argument("--api-group", default="StaticDataApi")
     parser.add_argument("--method", default="get_all_data")
+    parser.add_argument(
+        "--mode",
+        default=RuntimeMode.READ_ONLY.value,
+        choices=[mode.value for mode in RuntimeMode],
+        help="Runtime mode; read_only is the default safe mode.",
+    )
+    parser.add_argument(
+        "--raw",
+        action="store_true",
+        help="For 'accounts', print raw RTK payloads instead of typed summaries.",
+    )
     parser.add_argument(
         "--params",
         default="{}",
@@ -36,20 +48,32 @@ def _load_params(raw_params: str) -> dict[str, Any]:
 
 async def main() -> None:
     args = _parse_args()
+    runtime = RuntimeConfig(mode=RuntimeMode(args.mode))
     gateway = RaidToolkitAccountsGateway()
     gateway.connect()
 
     if args.command == "accounts":
         service = AccountService(gateway)
+        records = await service.list_account_records()
         accounts = await service.list_account_summaries()
-        print("Accounts found:", service.as_raw_list(accounts))
+        if args.raw:
+            print("Accounts found:", service.as_raw_list(records))
+        else:
+            print("Accounts found:", service.as_summary_list(accounts))
     else:
         params = _load_params(args.params)
         service = RaidToolkitQueryService(gateway)
         payload = await service.fetch(
             api_group=args.api_group, method=args.method, params=params
         )
-        print(json.dumps(payload, indent=2, sort_keys=True, default=str))
+        print(
+            json.dumps(
+                {"runtime_mode": runtime.mode.value, "payload": payload},
+                indent=2,
+                sort_keys=True,
+                default=str,
+            )
+        )
 
     gateway.close()
 
