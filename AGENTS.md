@@ -2,141 +2,193 @@
 
 ## Project Overview
 
-RSL Toolkit is a modular decision engine for Raid: Shadow Legends.
+`raid-ops` is a modular decision and automation engine for Raid: Shadow Legends.
 
-Primary capabilities: - Gear optimization - Team composition
-generation - Battle modeling and simulation - Optional automation
-adapters - AI-assisted ranking and recommendation layers
+Primary capabilities:
+- Gear optimization
+- Team composition generation
+- Battle modeling and simulation
+- Optional automation adapters
+- AI-assisted ranking and recommendations
 
-This project prioritizes determinism, transparency, and reproducibility.
+Core priorities:
+- Determinism
+- Transparency
+- Reproducibility
 
-AI enhances decision-making but does not replace core logic.
+AI is advisory. Core logic is authoritative.
 
-------------------------------------------------------------------------
+---
 
-## Architectural Principles
+## Canonical Layer Mapping
 
-1.  Core domain logic must be deterministic and testable.
-2.  AI modules must be isolated in `/ai`.
-3.  No UI logic in the domain layer.
-4.  No direct game interaction inside core logic.
-5.  All side effects must occur in integration or application layers.
-6.  No global mutable state.
-7.  Pure functions preferred in optimization and scoring logic.
+Use the existing repository structure as the source of truth.
 
-------------------------------------------------------------------------
+| Conceptual Layer | Current Path(s) | Notes |
+|---|---|---|
+| Core Domain | `src/raid_ops/domain` | Pure data models and rule primitives. |
+| Application Services | `src/raid_ops/services` | Orchestrates domain workflows; no UI or device I/O. |
+| Integration/Adapters | `src/raid_ops/connectors` | RTK, automation, keyboard, vision, and external gateways. |
+| App/Composition | `src/raid_ops/app`, `src/raid_ops/main.py` | CLI/composition root and wiring. |
+| AI Layer (future or isolated additions) | `src/raid_ops/ai` | Keep all AI-specific logic isolated here. |
 
-## Layered Architecture
+Do not create cross-layer shortcuts.
 
-### 1. Core Domain (`/core`)
+---
 
-Contains: - Champion models - Gear models - Stat calculations - Synergy
-logic - Scoring functions - Optimization engines
+## Non-Negotiable Rules
 
-Rules: - No external dependencies beyond standard libraries. - Must be
-fully unit-testable. - No randomness unless explicitly seeded.
+1. Domain behavior must be deterministic and unit-testable.
+2. No UI or connector code in `domain`.
+3. No scoring or optimization math in `connectors`.
+4. Side effects (network, filesystem, input automation, time, randomness) must be isolated behind interfaces.
+5. No hidden global mutable state.
+6. Prefer pure functions for scoring and optimization logic.
+7. Seed all randomness explicitly when used.
 
-------------------------------------------------------------------------
+---
 
-### 2. AI Layer (`/ai`)
+## Layer Responsibilities
 
-Contains: - Recommendation ranking - Heuristic refinement - Strategy
-suggestion engines - Explanation generators
+### `src/raid_ops/domain`
 
-Rules: - Must operate only on structured inputs from `/core`. - Must not
-invent game mechanics. - Must not bypass validation logic. - All outputs
-must include explainability metadata. - AI results must be reproducible
-when given same seed and inputs.
+Contains:
+- Game entities and typed models
+- Stat and rule calculations
+- Synergy/scoring primitives
 
-AI is advisory, not authoritative.
+Rules:
+- Keep dependencies minimal.
+- No direct RTK/game/tooling calls.
+- No implicit wall-clock or unseeded randomness.
 
-------------------------------------------------------------------------
+### `src/raid_ops/services`
 
-### 3. Integration Layer (`/integration`)
+Contains:
+- Use-case orchestration
+- Query/ranking workflow coordination
+- Validation and mapping between layers
 
-Contains: - Game interaction adapters (if implemented) - Import/export
-handlers - External data ingestion
+Rules:
+- May call domain and connector interfaces.
+- Must not embed device/game adapter specifics.
+- Keep business decisions explicit and testable.
 
-Rules: - Must not contain scoring logic. - Must not modify core data
-directly. - All integration must go through defined interfaces.
+### `src/raid_ops/connectors`
 
-------------------------------------------------------------------------
+Contains:
+- External integrations (RTK, UI automation, keyboard/mouse, observers)
+- Import/export and environment-facing adapters
 
-### 4. Application Layer (`/app`)
+Rules:
+- No domain scoring logic.
+- No silent mutation of domain objects outside defined contracts.
+- Failures must surface clear error context.
 
-Contains: - CLI - GUI - Configuration management - Workflow
-orchestration
+### `src/raid_ops/app` and `src/raid_ops/main.py`
 
-Rules: - No business logic here. - Only calls into core or AI modules.
+Contains:
+- CLI entry points
+- Dependency wiring
+- Workflow startup/shutdown
 
-------------------------------------------------------------------------
+Rules:
+- No domain math implementation here.
+- Keep orchestration thin; delegate logic to services/domain.
 
-## Optimization Engine Requirements
+### `src/raid_ops/ai` (when present)
 
-Gear Optimization: - Objective functions must be explicit. - Constraints
-must be configurable. - Must support deterministic mode. - Must provide
-full stat breakdown of chosen builds.
+Contains:
+- Recommendation ranking
+- Strategy suggestion refinement
+- Explanation generation
 
-Team Generation: - Must use defined role archetypes. - Must use synergy
-scoring. - Must expose reasoning behind team selection. - Must support
-constraint filtering (faction, affinity, availability).
+Rules:
+- Consume structured data from domain/services only.
+- Never invent game mechanics.
+- Never bypass core validation.
+- Return explainability metadata.
+- Be reproducible for the same inputs and seed.
 
-Combinatorial explosion must be mitigated through: - Heuristic pruning -
-Pre-filtering - Caching - Optional evolutionary algorithms
+---
 
-------------------------------------------------------------------------
+## Optimization Requirements
 
-## AI Behavior Constraints
+Gear optimization must:
+- Use explicit objective functions.
+- Expose configurable constraints.
+- Support deterministic mode.
+- Return full stat breakdowns for selected builds.
 
-AI modules: - Must not fabricate champion abilities. - Must not override
-stat rules. - Must validate all outputs before acceptance. - Must
-provide explanation data structures. - Must not degrade performance
-beyond defined thresholds.
+Team generation must:
+- Use role archetypes and synergy scoring.
+- Expose reasoning for selection and ranking.
+- Support constraint filters (faction, affinity, availability, etc.).
 
-AI suggestions must be ranked, not absolute.
+Control combinatorial explosion with:
+- Pre-filtering
+- Heuristic pruning
+- Caching/memoization
+- Optional evolutionary methods
 
-------------------------------------------------------------------------
+---
 
 ## Testing Standards
 
--   All stat calculations must have unit tests.
--   Optimization routines must support deterministic test mode.
--   Performance benchmarks required for optimization engine.
--   AI outputs must be verifiable against core scoring logic.
+- Add unit tests for all new or changed stat/scoring logic.
+- Deterministic paths must have deterministic tests.
+- AI outputs must be verifiable against core scoring/validation logic.
+- Performance-sensitive optimizers should include benchmark coverage when changed.
 
-Test coverage target: ≥ 80% for `/core`.
+Coverage target:
+- `src/raid_ops/domain` should remain at or above 80%.
 
-------------------------------------------------------------------------
+Minimum local validation before handoff:
+- `python -m pytest -q`
+
+---
 
 ## Performance Constraints
 
--   Gear evaluation must scale efficiently with inventory size.
--   Optimization must support parallel execution if applicable.
--   Caching strategy must be implemented for repeated stat calculations.
--   AI modules must not block core processing.
+- Gear evaluation must scale with inventory size.
+- Repeated calculations should use caching where effective.
+- Parallelism is allowed when deterministic behavior is preserved.
+- AI or connector work must not block core processing unnecessarily.
 
-------------------------------------------------------------------------
+---
 
-## Contribution Guidelines for Agents
+## Agent Workflow Checklist
 
-Before generating code: 1. Identify correct layer. 2. Avoid cross-layer
-contamination. 3. Ensure deterministic behavior where required. 4. Add
-tests for new scoring logic. 5. Document assumptions clearly.
+Before coding:
+1. Identify the correct layer and boundary.
+2. List assumptions and deterministic requirements.
+3. Confirm where side effects are allowed.
 
-Refactors must not: - Break deterministic behavior. - Introduce hidden
-side effects. - Reduce performance without justification.
+During coding:
+1. Keep interfaces explicit.
+2. Avoid cross-layer contamination.
+3. Keep behavior reproducible.
 
-------------------------------------------------------------------------
+Before handoff:
+1. Add/update tests for changed behavior.
+2. Run `python -m pytest -q`.
+3. Document tradeoffs, assumptions, and known gaps.
+
+Refactors must not:
+- Break determinism
+- Introduce hidden side effects
+- Reduce performance without justification
+
+---
 
 ## Future Expansion Areas
 
--   Battle simulation modeling
--   Arena AI strategy modes
--   Genetic algorithm optimizer
--   Meta analysis module
--   Data visualization layer
+- Battle simulation modeling
+- Arena AI strategy modes
+- Genetic algorithm optimizer
+- Meta analysis module
+- Data visualization layer
 
-------------------------------------------------------------------------
+---
 
-This document governs AI-assisted contributions. Core logic correctness
-always overrides AI creativity.
+This document governs AI-assisted contributions. Core logic correctness overrides AI creativity.
