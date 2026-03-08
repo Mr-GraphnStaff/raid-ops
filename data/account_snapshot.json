@@ -1,0 +1,8 @@
+[
+  {
+    "id": "snapshot-main",
+    "name": "Snapshot Account",
+    "level": 100,
+    "source": "offline-snapshot"
+  }
+]
