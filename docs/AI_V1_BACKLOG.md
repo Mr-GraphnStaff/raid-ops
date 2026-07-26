@@ -10,15 +10,18 @@ Ship an AI-first assistant for Raid that:
 
 Core scoring remains authoritative. AI is advisory and explainability-focused.
 
+The product is an owned Windows-first assistant, not a wrapper around RSL Helper or RTK. Third-party tools may be researched or imported from later, but v1 must work from owned schemas and owned snapshot/capture paths.
+
 ---
 
 ## Execution Order
 
 1. Build deterministic core primitives and scoring.
-2. Add deterministic candidate generation services.
-3. Add AI intent parsing, reranking, and explanations.
-4. Add end-to-end orchestration and CLI entrypoints.
-5. Add regression and performance checks.
+2. Define owned account/champion/artifact snapshot schemas.
+3. Add deterministic candidate generation services.
+4. Add AI intent parsing, reranking, and explanations.
+5. Add end-to-end orchestration and CLI entrypoints.
+6. Add regression and performance checks.
 
 ---
 
@@ -38,6 +41,11 @@ Outcome:
 
 Outcome:
 - natural-language query -> structured intent -> deterministic candidates -> AI rerank + explain -> validated response.
+
+### Epic 4: Owned Windows App Foundation
+
+Outcome:
+- a Windows-first app shell consumes the same service contracts as the CLI without depending on RSL Helper or RTK.
 
 ---
 
@@ -60,6 +68,27 @@ Acceptance criteria:
 
 Tests:
 - Unit tests validate defaults, immutability behavior, and serialization-safe field shapes.
+
+### AIV1-001A - Owned account snapshot schema
+
+Epic: Build Advisor  
+Summary: Define the project-owned snapshot schema for account, champion, artifact, and inventory data.
+
+Target files:
+- `src/raid_ops/domain/account_snapshot.py` (new)
+- `src/raid_ops/connectors/snapshot_gateway.py`
+- `tests/test_account_snapshot.py` (new)
+- `docs/V1_ARCHITECTURE.md`
+
+Acceptance criteria:
+- Schema covers account identity, champion roster, artifact inventory, and metadata source/version fields.
+- Schema is owned by `raid-ops` and does not mirror RSL Helper or RTK internals.
+- Snapshot parsing reports clear validation errors.
+
+Tests:
+- Valid minimal snapshot parse test.
+- Missing required fields test.
+- Version compatibility test.
 
 ### AIV1-002 - Deterministic build scoring engine
 
@@ -241,6 +270,23 @@ Tests:
 - Regression snapshot/golden tests.
 - Performance budget assertions with configurable thresholds.
 
+### AIV1-011 - Windows desktop shell decision record
+
+Epic: Owned Windows App Foundation  
+Summary: Add a decision record and scaffold plan for a Windows-native desktop shell.
+
+Target files:
+- `docs/WINDOWS_APP_DECISION.md` (new)
+- `docs/V1_ARCHITECTURE.md`
+
+Acceptance criteria:
+- Decision compares WinUI 3/.NET and Tauri without selecting based on existing Python code.
+- Decision states how the desktop shell consumes stable service contracts.
+- Decision keeps AI and connectors isolated from UI code.
+
+Tests:
+- Documentation-only; no runtime tests required.
+
 ---
 
 ## Definition of Done (V1)
@@ -264,3 +310,5 @@ Tests:
 - Evolutionary/genetic search in production path.
 - GUI implementation.
 - Live automation execution as part of recommendation path.
+- RSL Helper as a required dependency.
+- RTK as a required dependency.
