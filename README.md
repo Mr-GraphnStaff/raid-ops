@@ -7,6 +7,9 @@ A modular optimization and automation engine for Raid: Shadow Legends.
 Not a script.  
 An engine.
 
+Not an RSL Helper wrapper.  
+The long-term product direction is an owned Windows-first AI assistant with owned data contracts and optional replaceable connectors.
+
 ---
 
 ## Purpose
@@ -58,9 +61,9 @@ Every recommendation must be traceable to measurable scoring logic.
 
 /integration
   External adapters
-  - RTK connectivity
-  - Data ingestion
-  - Automation bridges
+  - Owned snapshot/capture ingestion
+  - Optional third-party importers
+  - Optional automation bridges
 
 /app
   Orchestration layer
